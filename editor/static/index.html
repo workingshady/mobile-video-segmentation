@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Track Studio</title>
+  <link rel="stylesheet" href="/css/editor.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ top bar ============ -->
+  <header class="topbar">
+    <div class="brand"><span class="logo">◆</span>Track Studio</div>
+    <div class="group">
+      <button id="btnImport" title="Import video or image (Ctrl+O)"><span class="ico">⭳</span>Import</button>
+      <div class="dropdown">
+        <button id="btnProjects">Projects <span class="caret">▾</span></button>
+        <div class="menu" id="projectsMenu"></div>
+      </div>
+    </div>
+    <span id="projectName" class="project-name">No project</span>
+
+    <div class="spacer"></div>
+
+    <div class="model-box" title="Model used for clicks and tracking">
+      <span class="dot" id="modelDot"></span>
+      <select id="modelSelect"></select>
+      <span id="modelTier"></span>
+      <button id="btnLoadModel" class="primary-soft">Load</button>
+    </div>
+    <span id="modelChip" class="status-text">No model loaded</span>
+    <span class="vsep"></span>
+    <span id="vramChip" class="status-text mono"></span>
+    <button id="btnExport" class="primary" title="Export (Ctrl+E)">Export</button>
+  </header>
+
+  <!-- ============ workspace ============ -->
+  <div class="workspace">
+    <nav class="toolbar" id="toolbar">
+      <button data-tool="select" title="Pan (V)">✋</button>
+      <div class="tool-sep"></div>
+      <button data-tool="pos" title="Add point: this IS the object (A)" class="tool-pos">+</button>
+      <button data-tool="neg" title="Add point: NOT the object (S)" class="tool-neg">−</button>
+      <button data-tool="box" title="Box around the object (B)">▭</button>
+      <div class="tool-sep"></div>
+      <button data-tool="magic" title="Magic brush (M): paint over part of the object, the model finds the whole object. Paint more to keep filling. Alt or right-drag = remove">✨</button>
+      <button data-tool="brush" title="Brush: paint the mask by hand, pixel-exact (R)">🖌</button>
+      <button data-tool="erase" title="Eraser (E)">⌫</button>
+      <div class="tool-sep"></div>
+      <button id="btnFit" title="Fit to screen (F)">⤢</button>
+      <button id="btnUndo" title="Undo prompt (Ctrl+Z)">↶</button>
+    </nav>
+
+    <aside class="side left-panel">
+      <div class="panel-head">
+        <h3>Objects</h3>
+        <button id="btnAddObject" class="small" title="New object (N)">＋ New</button>
+      </div>
+      <div id="objectList" class="object-list"></div>
+      <div class="panel-foot">
+        <p class="hint" id="promptHint"></p>
+        <button id="btnClearFrame" class="small block" title="Delete">Clear prompt on this frame</button>
+      </div>
+    </aside>
+
+    <main class="viewer" id="viewerWrap">
+      <div class="viewer-bar">
+        <div class="seg" id="viewMode">
+          <button data-view="edit" class="on" title="Masks + prompts (P toggles)">Edit</button>
+          <button data-view="preview" title="Final look with effects (P toggles)">Preview</button>
+        </div>
+        <label class="lbl" for="viewModelSelect">Masks from</label>
+        <select id="viewModelSelect" title="Which model's results to show/export"></select>
+        <div class="brush-ctl hidden" id="brushCtl" title="Brush size ([ and ])">
+          <span class="lbl">Brush</span>
+          <input type="range" id="brushSize" min="2" max="160" value="24">
+          <span class="mono val" id="brushSizeLabel">24 px</span>
+        </div>
+        <span class="spacer"></span>
+        <span id="cursorInfo" class="lbl mono"></span>
+      </div>
+      <div class="stage" id="stage">
+        <canvas id="viewer"></canvas>
+        <div class="empty" id="emptyState">
+          <div class="empty-card">
+            <div class="empty-ico">⭳</div>
+            <h2>Drop a video or image here</h2>
+            <p>Then load a model, click the object you want, and press <b>Track</b>.</p>
+            <button class="primary" id="btnEmptyImport">Import video or image</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="side right-panel">
+      <div class="tabs" id="rightTabs">
+        <button data-tab="effects" class="on">Effects</button>
+        <button data-tab="models">Models</button>
+        <button data-tab="compare">Compare</button>
+        <button data-tab="runs">Speed</button>
+      </div>
+      <div class="tab-body" id="tab-effects"></div>
+      <div class="tab-body hidden" id="tab-models"></div>
+      <div class="tab-body hidden" id="tab-compare"></div>
+      <div class="tab-body hidden" id="tab-runs"></div>
+    </aside>
+  </div>
+
+  <!-- ============ timeline ============ -->
+  <section class="timeline-wrap">
+    <div class="transport">
+      <div class="seg icon-seg">
+        <button id="btnStart" title="First frame (Home)">⏮</button>
+        <button id="btnPrev" title="Previous frame (←)">◀</button>
+        <button id="btnPlay" class="play" title="Play / pause (Space)">▶</button>
+        <button id="btnNext" title="Next frame (→)">▶</button>
+        <button id="btnEnd" title="Last frame (End)">⏭</button>
+      </div>
+      <div class="timebox">
+        <span class="timecode mono" id="timecode">00:00.00</span>
+        <input id="frameInput" class="frame-input mono" type="number" min="0" value="0" title="Frame">
+        <span class="lbl mono" id="frameTotal">/ 0</span>
+      </div>
+
+      <span class="vsep"></span>
+      <div class="seg">
+        <button id="btnIn" title="Set range start (I)">⇤ In</button>
+        <button id="btnOut" title="Set range end (O)">Out ⇥</button>
+      </div>
+      <label class="check"><input type="checkbox" id="useRange" checked>Range only</label>
+
+      <span class="vsep"></span>
+      <div class="seg track-seg">
+        <button id="btnTrackBack" title="Track backward">◀</button>
+        <button id="btnTrackBoth" class="primary" title="Track whole range, both directions (T)">Track</button>
+        <button id="btnTrackFwd" title="Track forward">▶</button>
+      </div>
+      <button id="btnStop" class="danger hidden" title="Stop (Esc)">■ Stop</button>
+      <div class="job" id="jobBar">
+        <div class="job-fill" id="jobFill"></div>
+        <span id="jobText">Ready</span>
+      </div>
+
+      <div class="zoom">
+        <span class="lbl">Zoom</span>
+        <input type="range" id="tlZoom" min="0" max="100" value="0" title="Timeline zoom (Ctrl+wheel)">
+      </div>
+    </div>
+    <div class="timeline-scroll" id="timelineScroll">
+      <canvas id="timeline"></canvas>
+    </div>
+  </section>
+</div>
+
+<!-- Import dialog -->
+<dialog id="importDialog">
+  <form method="dialog" class="dlg">
+    <h2>Import video or image</h2>
+    <label class="file-drop" id="fileDrop">
+      <input type="file" id="importFile" accept="video/*,image/*">
+      <span id="importFileName">Choose a file…</span>
+    </label>
+    <div class="grid2">
+      <label>Project name <input id="importName" placeholder="from file name"></label>
+      <label>Max side (px) <input id="importMaxSide" type="number" value="1280" min="256" step="64"></label>
+      <label>Start (sec) <input id="importStart" type="number" value="0" min="0" step="0.1"></label>
+      <label>End (sec, 0 = end) <input id="importEnd" type="number" value="0" min="0" step="0.1"></label>
+      <label>Use every Nth frame <input id="importStep" type="number" value="1" min="1"></label>
+      <label>Max frames <input id="importMaxFrames" type="number" value="400" min="1"></label>
+    </div>
+    <p class="hint">Models keep every frame in RAM (~6 MB per frame). 300–400 frames at 1280 px is safe with 14 GB RAM.
+      Use "every Nth frame" for long or 60 fps videos.</p>
+    <div class="dlg-actions">
+      <button value="cancel" class="ghost">Cancel</button>
+      <button id="importGo" value="default" class="primary">Import</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Export dialog -->
+<dialog id="exportDialog">
+  <form method="dialog" class="dlg">
+    <h2>Export</h2>
+    <div class="radio-list" id="exportFormats">
+      <label><input type="radio" name="fmt" value="mp4" checked> <b>MP4</b><span>video with effects + audio</span></label>
+      <label><input type="radio" name="fmt" value="webm_alpha"> <b>WebM transparent</b><span>cutout with alpha</span></label>
+      <label><input type="radio" name="fmt" value="png_alpha"> <b>PNG sequence + alpha</b><span>cutout frames</span></label>
+      <label><input type="radio" name="fmt" value="png"> <b>PNG sequence</b><span>frames with effects</span></label>
+      <label><input type="radio" name="fmt" value="masks"> <b>Mask mattes</b><span>black/white PNG per object</span></label>
+    </div>
+    <div class="grid2">
+      <label>Resolution
+        <select id="exportRes"><option value="working">Working (as edited)</option><option value="original">Original source</option></select>
+      </label>
+      <label>Masks from <select id="exportModel"></select></label>
+    </div>
+    <label class="check"><input type="checkbox" id="exportRange" checked> Only the in/out range</label>
+    <label class="check"><input type="checkbox" id="exportAudio" checked> Keep audio</label>
+    <div class="dlg-actions">
+      <button value="cancel" class="ghost">Cancel</button>
+      <button id="exportGo" value="default" class="primary">Export</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toasts" class="toasts"></div>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

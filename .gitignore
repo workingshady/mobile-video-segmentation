@@ -1,0 +1,10 @@
+output/
+__pycache__/
+*.mp4
+*.mlpackage/
+models/
+projects/
+third_party/
+*.log
+.pytest_cache/
+.venv/

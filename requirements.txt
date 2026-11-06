@@ -1,0 +1,23 @@
+# PyTorch is installed separately (CUDA build) - see setup.bat.
+# EdgeTamVideoModel / Sam3TrackerVideoModel need a recent transformers (4.54 and older do NOT have them).
+transformers>=4.57  # 5.x needs torch>=2.6; 4.57.x works with torch 2.5
+timm  # EdgeTAM backbone
+accelerate
+huggingface_hub
+opencv-python>=4.9
+pillow
+numpy
+# editor server
+fastapi
+uvicorn[standard]
+python-multipart
+imageio-ffmpeg
+# phone pipeline (ONNX export + CPU runtime)
+onnxruntime
+onnx
+# EfficientTAM (installed from third_party/EfficientTAM with --no-deps)
+hydra-core>=1.3.2
+iopath>=0.1.10
+tqdm
+# tests
+pytest
